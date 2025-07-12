@@ -9,5 +9,5 @@ dev = []
 [tool.ruff]
 line-length = 100
 lint.select = ["ALL"]
-lint.ignore = ["D"]
+lint.ignore = ["D", "T201"]
 lint.per-file-ignores = { "tests/**/*.py" = ["S101"] }
