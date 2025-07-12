@@ -96,9 +96,9 @@ def run(code: str) -> None:
         cmd, amount = bytecode[bytecode_ptr]
 
         if cmd == "+":
-            tape[tape_ptr] += amount
+            tape[tape_ptr] = (tape[tape_ptr] + amount) % 256
         elif cmd == "-":
-            tape[tape_ptr] -= amount
+            tape[tape_ptr] = (tape[tape_ptr] - amount) % 256
         elif cmd == ">":
             tape_ptr += amount
         elif cmd == "<":
