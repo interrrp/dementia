@@ -1,17 +1,6 @@
 from pathlib import Path
 from sys import argv, stderr
 
-
-def main() -> None:
-    match argv[1:]:
-        case [file]:
-            run(Path(file).read_text())
-
-        case _:
-            print("Usage: dementia <program file>", file=stderr)
-            raise SystemExit(1)
-
-
 Instruction = tuple[str, int]
 Bytecode = list[Instruction]
 
@@ -32,61 +21,8 @@ def build_bytecode(code: str) -> Bytecode:
         [-<+>] ("transfer", distance from current cell to target cell)
     """
 
-    code_ptr = 0
-    pass_1: Bytecode = []
-
-    max_code_ptr = len(code)
-    while code_ptr < max_code_ptr:
-        cmd = code[code_ptr]
-
-        if cmd in "+-":
-            code_ptr, amount = sum_repeatable_commands(code, code_ptr, "+", "-")
-            pass_1.append(("+", amount))
-
-        elif cmd in "><":
-            code_ptr, amount = sum_repeatable_commands(code, code_ptr, ">", "<")
-            pass_1.append((">", amount))
-
-        elif code[code_ptr : code_ptr + 3] in ("[-]", "[+]"):
-            code_ptr += 2
-            pass_1.append(("clear", 1))
-
-        elif cmd in "[],.":
-            pass_1.append((cmd, 1))
-
-        code_ptr += 1
-
-    pass_2: Bytecode = []
-    i = 0
-    while i < len(pass_1):
-        match pass_1[i : i + 6]:
-            case [
-                ("[", _),
-                ("-", 1),
-                ("<", left),
-                ("+", 1),
-                (">", right),
-                ("]", _),
-            ] if left == right:
-                pass_2.append(("move", -left))
-                i += 5
-
-            case [
-                ("[", _),
-                ("-", 1),
-                (">", left),
-                ("+", 1),
-                ("<", right),
-                ("]", _),
-            ] if left == right:
-                pass_2.append(("move", left))
-                i += 5
-
-            case _:
-                pass_2.append(pass_1[i])
-        i += 1
-
-    return pass_2
+    pass_1 = parse_basic_instructions(code)
+    return optimize_transfers(pass_1)
 
 
 def sum_repeatable_commands(
@@ -107,10 +43,74 @@ def sum_repeatable_commands(
     return (code_ptr - 1, amount)
 
 
-def run(code: str) -> None:
-    bytecode = build_bytecode(code)
+def parse_basic_instructions(code: str) -> Bytecode:
+    code_ptr = 0
+    bytecode: Bytecode = []
 
-    python = [
+    max_code_ptr = len(code)
+    while code_ptr < max_code_ptr:
+        cmd = code[code_ptr]
+
+        if cmd in "+-":
+            code_ptr, amount = sum_repeatable_commands(code, code_ptr, "+", "-")
+            bytecode.append(("+", amount))
+
+        elif cmd in "><":
+            code_ptr, amount = sum_repeatable_commands(code, code_ptr, ">", "<")
+            bytecode.append((">", amount))
+
+        elif code[code_ptr : code_ptr + 3] in ("[-]", "[+]"):
+            code_ptr += 2
+            bytecode.append(("clear", 1))
+
+        elif cmd in "[],.":
+            bytecode.append((cmd, 1))
+
+        code_ptr += 1
+
+    return bytecode
+
+
+def optimize_transfers(bytecode: Bytecode) -> Bytecode:
+    new_bytecode: Bytecode = []
+
+    i = 0
+    while i < len(bytecode):
+        match bytecode[i : i + 6]:
+            # [-<+>] Transfer to the left
+            case [
+                ("[", _),
+                ("-", 1),
+                ("<", left),
+                ("+", 1),
+                (">", right),
+                ("]", _),
+            ] if left == right:
+                new_bytecode.append(("move", -left))
+                i += 5
+
+            # [->+<] Transfer to the right
+            case [
+                ("[", _),
+                ("-", 1),
+                (">", left),
+                ("+", 1),
+                ("<", right),
+                ("]", _),
+            ] if left == right:
+                new_bytecode.append(("move", right))
+                i += 5
+
+            case _:
+                new_bytecode.append(bytecode[i])
+
+        i += 1
+
+    return new_bytecode
+
+
+def build_python_code(bytecode: Bytecode) -> str:
+    lines = [
         "tape = [0] * 512",
         "ptr = 0",
     ]
@@ -126,7 +126,7 @@ def run(code: str) -> None:
             line = f"ptr += {amount}"
 
         elif op == "[":
-            python.append("    " * indent + "while tape[ptr] != 0:")
+            lines.append("    " * indent + "while tape[ptr] != 0:")
             indent += 1
             continue
         elif op == "]":
@@ -145,9 +145,25 @@ def run(code: str) -> None:
             line = f"tape[ptr], tape[ptr + {amount}] = tape[ptr]"
             continue
 
-        python.append(f"{'    ' * indent}{line}")
+        lines.append(f"{'    ' * indent}{line}")
 
-    exec("\n".join(python))  # noqa: S102
+    return "\n".join(lines)
+
+
+def run(code: str) -> None:
+    bytecode = build_bytecode(code)
+    python = build_python_code(bytecode)
+    exec(python)  # noqa: S102
+
+
+def main() -> None:
+    match argv[1:]:
+        case [file]:
+            run(Path(file).read_text())
+
+        case _:
+            print("Usage: dementia <program file>", file=stderr)
+            raise SystemExit(1)
 
 
 if __name__ == "__main__":
