@@ -106,7 +106,7 @@ def run(code: str) -> None:
         elif (cmd == "[" and tape[tape_ptr] == 0) or (cmd == "]" and tape[tape_ptr] != 0):
             bytecode_ptr = bracket_map[bytecode_ptr]
         elif cmd == ",":
-            pass
+            tape[tape_ptr] = ord(input()[0])
         elif cmd == ".":
             print(chr(tape[tape_ptr]), end="", flush=True)
 
