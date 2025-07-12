@@ -71,10 +71,10 @@ def build_bracket_map(bytecode: Bytecode) -> dict[int, int]:
     bracket_map: dict[int, int] = {}
     stack: list[int] = []
 
-    for i, c in enumerate(bytecode):
-        if c[0] == "[":
+    for i, (cmd, _) in enumerate(bytecode):
+        if cmd == "[":
             stack.append(i)
-        elif c[0] == "]":
+        elif cmd == "]":
             start = stack.pop()
             end = i
             bracket_map[start] = end
@@ -93,25 +93,23 @@ def run(code: str) -> None:
 
     max_bytecode_ptr = len(bytecode)
     while bytecode_ptr < max_bytecode_ptr:
-        match bytecode[bytecode_ptr]:
-            case ("+", amount):
-                tape[tape_ptr] += amount
-            case ("-", amount):
-                tape[tape_ptr] -= amount
-            case (">", amount):
-                tape_ptr += amount
-            case ("<", amount):
-                tape_ptr -= amount
-            case ("[", _) if tape[tape_ptr] == 0:
-                bytecode_ptr = bracket_map[bytecode_ptr]
-            case ("]", _) if tape[tape_ptr] != 0:
-                bytecode_ptr = bracket_map[bytecode_ptr]
-            case (",", _):
-                pass
-            case (".", _):
-                print(chr(tape[tape_ptr]), end="", flush=True)
-            case _:
-                pass
+        cmd, amount = bytecode[bytecode_ptr]
+
+        if cmd == "+":
+            tape[tape_ptr] += amount
+        elif cmd == "-":
+            tape[tape_ptr] -= amount
+        elif cmd == ">":
+            tape_ptr += amount
+        elif cmd == "<":
+            tape_ptr -= amount
+        elif (cmd == "[" and tape[tape_ptr] == 0) or (cmd == "]" and tape[tape_ptr] != 0):
+            bytecode_ptr = bracket_map[bytecode_ptr]
+        elif cmd == ",":
+            pass
+        elif cmd == ".":
+            print(chr(tape[tape_ptr]), end="", flush=True)
+
         bytecode_ptr += 1
 
 
