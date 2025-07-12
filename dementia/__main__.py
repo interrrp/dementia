@@ -21,33 +21,90 @@ def build_bytecode(code: str) -> Bytecode:
     Build bytecode for a Brainfuck program.
 
     This returns a list of tuples in the format of (instruction, amount),
-    meaning "do this instruction this amount of times".
+    meaning "do this instruction this amount of times". Instructions may
+    be one of the following:
 
-    Only the instructions +-<> have varying amounts. [],. are fixed to an
-    amount of 1, regardless of whether they are repeated multiple times in a row.
+        +      ("+", amount)  - will not be omitted in favor of a negative amount here
+        >      (">", amount)  < will not be omitted in favor of a negative amount here
+        ,      (",", 1)
+        .      (".", 1)
+        [-]    ("clear", 1)
+        [-<+>] ("transfer", distance from current cell to target cell)
     """
 
     code_ptr = 0
-    instructions: Bytecode = []
+    pass_1: Bytecode = []
 
     max_code_ptr = len(code)
     while code_ptr < max_code_ptr:
-        initial_code_ptr = code_ptr
         cmd = code[code_ptr]
 
-        if cmd in "+-<>":
-            cmd = code[initial_code_ptr]
-            code_ptr = initial_code_ptr
-            while code_ptr + 1 < len(code) and code[code_ptr + 1] == cmd:
-                code_ptr += 1
-            amount = code_ptr - initial_code_ptr + 1
-            instructions.append((cmd, amount))
+        if cmd in "+-":
+            code_ptr, amount = sum_repeatable_commands(code, code_ptr, "+", "-")
+            pass_1.append(("+", amount))
+
+        elif cmd in "><":
+            code_ptr, amount = sum_repeatable_commands(code, code_ptr, ">", "<")
+            pass_1.append((">", amount))
+
+        elif code[code_ptr : code_ptr + 3] in ("[-]", "[+]"):
+            code_ptr += 2
+            pass_1.append(("clear", 1))
+
         elif cmd in "[],.":
-            instructions.append((cmd, 1))
+            pass_1.append((cmd, 1))
 
         code_ptr += 1
 
-    return instructions
+    pass_2: Bytecode = []
+    i = 0
+    while i < len(pass_1):
+        match pass_1[i : i + 6]:
+            case [
+                ("[", _),
+                ("-", 1),
+                ("<", left),
+                ("+", 1),
+                (">", right),
+                ("]", _),
+            ] if left == right:
+                pass_2.append(("move", -left))
+                i += 5
+
+            case [
+                ("[", _),
+                ("-", 1),
+                (">", left),
+                ("+", 1),
+                ("<", right),
+                ("]", _),
+            ] if left == right:
+                pass_2.append(("move", left))
+                i += 5
+
+            case _:
+                pass_2.append(pass_1[i])
+        i += 1
+
+    return pass_2
+
+
+def sum_repeatable_commands(
+    code: str,
+    code_ptr: int,
+    positive: str,
+    negative: str,
+) -> tuple[int, int]:
+    amount = 0
+
+    while code[code_ptr] in (positive, negative):
+        if code[code_ptr] == positive:
+            amount += 1
+        elif code[code_ptr] == negative:
+            amount -= 1
+        code_ptr += 1
+
+    return (code_ptr - 1, amount)
 
 
 def build_bracket_map(bytecode: Bytecode) -> dict[int, int]:
@@ -97,18 +154,23 @@ def run(code: str) -> None:
 
         if cmd == "+":
             tape[tape_ptr] = (tape[tape_ptr] + amount) % 256
-        elif cmd == "-":
-            tape[tape_ptr] = (tape[tape_ptr] - amount) % 256
         elif cmd == ">":
             tape_ptr += amount
-        elif cmd == "<":
-            tape_ptr -= amount
+
+        elif cmd == "clear":
+            tape[tape_ptr] = 0
+
+        elif cmd == "move":
+            tape[tape_ptr + amount] += tape[tape_ptr]
+            tape[tape_ptr] = 0
+
         elif (cmd == "[" and tape[tape_ptr] == 0) or (cmd == "]" and tape[tape_ptr] != 0):
             bytecode_ptr = bracket_map[bytecode_ptr]
+
         elif cmd == ",":
             tape[tape_ptr] = ord(input()[0])
         elif cmd == ".":
-            print(chr(tape[tape_ptr]), end="", flush=True)
+            print(chr(tape[tape_ptr]), end="")
 
         bytecode_ptr += 1
 
