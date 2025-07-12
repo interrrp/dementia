@@ -23,9 +23,8 @@ def build_bytecode(code: str) -> Bytecode:
     This returns a list of tuples in the format of (instruction, amount),
     meaning "do this instruction this amount of times".
 
-    Only the instructions +, -, <, and > have varying amounts. [, ],
-    , and . are fixed to an amount of 1, regardless of whether they are
-    repeated multiple times in a row.
+    Only the instructions +-<> have varying amounts. [],. are fixed to an
+    amount of 1, regardless of whether they are repeated multiple times in a row.
     """
 
     code_ptr = 0
