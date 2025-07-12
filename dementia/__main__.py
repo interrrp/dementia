@@ -20,8 +20,8 @@ def build_bytecode(code: str) -> Bytecode:
     """
     Build bytecode for a Brainfuck program.
 
-    This returns a list of tuples in the format of (instruction, amount),
-    meaning "do this instruction this amount of times". Instructions may
+    This returns a list of tuples in the format of (op, amount),
+    meaning "do this operation this amount of times". Instructions may
     be one of the following:
 
         +      ("+", amount)  - will not be omitted in favor of a negative amount here
@@ -107,72 +107,47 @@ def sum_repeatable_commands(
     return (code_ptr - 1, amount)
 
 
-def build_bracket_map(bytecode: Bytecode) -> dict[int, int]:
-    """
-    Build a bracket map.
-
-    This returns a map from [ indices to their corresponding
-    ] indices and vice versa. This means that for a program like:
-
-        code:    [+++[-]++]
-        indices: 0123456789
-
-    the bracket map is:
-
-        0 -> 9
-        9 -> 0
-        4 -> 6
-        6 -> 4
-    """
-
-    bracket_map: dict[int, int] = {}
-    stack: list[int] = []
-
-    for i, (cmd, _) in enumerate(bytecode):
-        if cmd == "[":
-            stack.append(i)
-        elif cmd == "]":
-            start = stack.pop()
-            end = i
-            bracket_map[start] = end
-            bracket_map[end] = start
-
-    return bracket_map
-
-
 def run(code: str) -> None:
     bytecode = build_bytecode(code)
-    bracket_map = build_bracket_map(bytecode)
 
-    tape: list[int] = [0] * 512
-    tape_ptr = 0
-    bytecode_ptr = 0
+    python = [
+        "tape = [0] * 512",
+        "ptr = 0",
+    ]
 
-    max_bytecode_ptr = len(bytecode)
-    while bytecode_ptr < max_bytecode_ptr:
-        cmd, amount = bytecode[bytecode_ptr]
+    indent = 0
 
-        if cmd == "+":
-            tape[tape_ptr] = (tape[tape_ptr] + amount) % 256
-        elif cmd == ">":
-            tape_ptr += amount
+    for op, amount in bytecode:
+        line = ""
 
-        elif cmd == "clear":
-            tape[tape_ptr] = 0
+        if op == "+":
+            line = f"tape[ptr] += {amount}"
+        elif op == ">":
+            line = f"ptr += {amount}"
 
-        elif cmd == "move":
-            tape[tape_ptr + amount] += tape[tape_ptr]
-            tape[tape_ptr] = 0
+        elif op == "[":
+            python.append("    " * indent + "while tape[ptr] != 0:")
+            indent += 1
+            continue
+        elif op == "]":
+            indent -= 1
+            continue
 
-        elif (cmd == "[" and tape[tape_ptr] == 0) or (cmd == "]" and tape[tape_ptr] != 0):
-            bytecode_ptr = bracket_map[bytecode_ptr]
+        elif op == ",":
+            line = "tape[ptr] = ord(input()[0])"
+        elif op == ".":
+            line = "print(chr(tape[ptr]), end='')"
 
-        elif cmd == ",":
-            tape[tape_ptr] = ord(input()[0])
-        elif cmd == ".":
-            print(chr(tape[tape_ptr]), end="")
+        elif op == "clear":
+            line = "tape[ptr] = 0"
 
-        bytecode_ptr += 1
+        elif op == "move":
+            line = f"tape[ptr], tape[ptr + {amount}] = tape[ptr]"
+            continue
+
+        python.append(f"{'    ' * indent}{line}")
+
+    exec("\n".join(python))  # noqa: S102
 
 
 if __name__ == "__main__":
