@@ -136,7 +136,7 @@ def build_python_code(bytecode: Bytecode) -> str:
             continue
 
         elif op == ",":
-            line = "tape[ptr] = ord(input()[0])"
+            line = "tape[ptr] = ord(input()[:1] or '\\0')"
         elif op == ".":
             line = "print(chr(tape[ptr]), end='')"
 
