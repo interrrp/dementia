@@ -82,25 +82,13 @@ def optimize_patterns(bytecode: Bytecode) -> Bytecode:
             # [-<+>] Transfer to the left
             case [
                 ("[", _),
-                ("-", 1),
-                ("<", left),
+                ("+", -1),
+                (">", left),
                 ("+", 1),
                 (">", right),
                 ("]", _),
-            ] if left == right:
-                new_bytecode.append(("move", -left))
-                i += 5
-
-            # [->+<] Transfer to the right
-            case [
-                ("[", _),
-                ("-", 1),
-                (">", left),
-                ("+", 1),
-                ("<", right),
-                ("]", _),
-            ] if left == right:
-                new_bytecode.append(("move", right))
+            ] if left == -right:
+                new_bytecode.append(("transfer", left))
                 i += 5
 
             case _:
@@ -143,8 +131,9 @@ def build_python_code(bytecode: Bytecode) -> str:
         elif op == "clear":
             line = "tape[ptr] = 0"
 
-        elif op == "move":
-            line = f"tape[ptr], tape[ptr + {amount}] = tape[ptr]"
+        elif op == "transfer":
+            lines.append(f"{'    ' * indent}tape[ptr + {amount}] += tape[ptr]")
+            lines.append(f"{'    ' * indent}tape[ptr] = 0")
             continue
 
         lines.append(f"{'    ' * indent}{line}")
