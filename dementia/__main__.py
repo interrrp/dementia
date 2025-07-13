@@ -75,9 +75,9 @@ def optimize_patterns(bytecode: Bytecode) -> Bytecode:
     while i < len(bytecode):
         match bytecode[i : i + 6]:
             # [-] [+] Clear
-            case [("[", _), ("-", 1) | ("+", 1), ("]", _)]:
+            case [("[", _), ("+", _), ("]", _), *_]:
                 new_bytecode.append(("clear", 1))
-                i += 3
+                i += 2
 
             # [-<+>] Transfer to the left
             case [
