@@ -19,10 +19,11 @@ def build_bytecode(code: str) -> Bytecode:
         .      (".", 1)
         [-]    ("clear", 1)
         [-<+>] ("transfer", distance from current cell to target cell)
+        [->+<]<[<+>-] ("copy", distance from current cell to target cell)
     """
 
     pass_1 = parse_basic_instructions(code)
-    return optimize_transfers(pass_1)
+    return optimize_patterns(pass_1)
 
 
 def sum_repeatable_commands(
@@ -59,10 +60,6 @@ def parse_basic_instructions(code: str) -> Bytecode:
             code_ptr, amount = sum_repeatable_commands(code, code_ptr, ">", "<")
             bytecode.append((">", amount))
 
-        elif code[code_ptr : code_ptr + 3] in ("[-]", "[+]"):
-            code_ptr += 2
-            bytecode.append(("clear", 1))
-
         elif cmd in "[],.":
             bytecode.append((cmd, 1))
 
@@ -71,12 +68,17 @@ def parse_basic_instructions(code: str) -> Bytecode:
     return bytecode
 
 
-def optimize_transfers(bytecode: Bytecode) -> Bytecode:
+def optimize_patterns(bytecode: Bytecode) -> Bytecode:
     new_bytecode: Bytecode = []
 
     i = 0
     while i < len(bytecode):
         match bytecode[i : i + 6]:
+            # [-] [+] Clear
+            case [("[", _), ("-", 1) | ("+", 1), ("]", _)]:
+                new_bytecode.append(("clear", 1))
+                i += 3
+
             # [-<+>] Transfer to the left
             case [
                 ("[", _),
