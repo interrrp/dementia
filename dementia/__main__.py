@@ -19,7 +19,6 @@ def build_bytecode(code: str) -> Bytecode:
         .      (".", 1)
         [-]    ("clear", 1)
         [-<+>] ("transfer", distance from current cell to target cell)
-        [->+<]<[<+>-] ("copy", distance from current cell to target cell)
     """
 
     pass_1 = parse_basic_instructions(code)
