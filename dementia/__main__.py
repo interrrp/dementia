@@ -147,13 +147,17 @@ def run(code: str) -> None:
 
 
 def main() -> None:
-    match argv[1:]:
-        case [file]:
-            run(Path(file).read_text())
+    try:
+        run(Path(argv[1]).read_text())
+    except IndexError:
+        fail("Usage: dementia <program file>")
+    except FileNotFoundError:
+        fail(f"{argv[1]} does not exist")
 
-        case _:
-            print("Usage: dementia <program file>", file=stderr)
-            raise SystemExit(1)
+
+def fail(msg: str) -> None:
+    print(msg, file=stderr)
+    raise SystemExit(1)
 
 
 if __name__ == "__main__":
