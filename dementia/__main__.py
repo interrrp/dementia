@@ -109,7 +109,7 @@ def build_python_code(bytecode: Bytecode) -> str:
         line = ""
 
         if op == "+":
-            line = f"tape[ptr] += {amount}"
+            line = f"tape[ptr] = (tape[ptr] + {amount}) % 256"
         elif op == ">":
             line = f"ptr += {amount}"
 
