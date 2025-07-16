@@ -97,7 +97,7 @@ def optimize_patterns(bytecode: Bytecode) -> Bytecode:
     return new_bytecode
 
 
-def build_python_code(bytecode: Bytecode) -> str:
+def build_python_code(bytecode: Bytecode) -> str:  # noqa: C901
     lines = [
         "tape = [0] * 512",
         "ptr = 0",
@@ -105,36 +105,32 @@ def build_python_code(bytecode: Bytecode) -> str:
 
     indent = 0
 
-    for op, amount in bytecode:
-        line = ""
+    def emit(line: str) -> None:
+        lines.append(f"{'    ' * indent}{line}")
 
+    for op, amount in bytecode:
         if op == "+":
-            line = f"tape[ptr] = (tape[ptr] + {amount}) % 256"
+            emit(f"tape[ptr] = (tape[ptr] + {amount}) % 256")
         elif op == ">":
-            line = f"ptr += {amount}"
+            emit(f"ptr += {amount}")
 
         elif op == "[":
-            lines.append("    " * indent + "while tape[ptr] != 0:")
+            emit("while tape[ptr] != 0:")
             indent += 1
-            continue
         elif op == "]":
             indent -= 1
-            continue
 
         elif op == ",":
-            line = "tape[ptr] = ord(input()[:1] or '\\0')"
+            emit("tape[ptr] = ord(input()[:1] or '\\0')")
         elif op == ".":
-            line = "print(chr(tape[ptr]), end='')"
+            emit("print(chr(tape[ptr]), end='')")
 
         elif op == "clear":
-            line = "tape[ptr] = 0"
+            emit("tape[ptr] = 0")
 
         elif op == "transfer":
-            lines.append(f"{'    ' * indent}tape[ptr + {amount}] += tape[ptr]")
-            lines.append(f"{'    ' * indent}tape[ptr] = 0")
-            continue
-
-        lines.append(f"{'    ' * indent}{line}")
+            emit(f"tape[ptr + {amount}] += tape[ptr]")
+            emit("tape[ptr] = 0")
 
     return "\n".join(lines)
 
