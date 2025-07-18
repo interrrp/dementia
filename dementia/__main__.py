@@ -88,7 +88,7 @@ def optimize_patterns(bytecode: Bytecode) -> Bytecode:
     while i < len(bytecode):
         match bytecode[i:]:
             # [-] [+] Clear
-            case [StartLoop(), IncCell(_), EndLoop(), *_]:
+            case [StartLoop(), IncCell(-1) | IncCell(1), EndLoop(), *_]:
                 new_bytecode.append(Clear())
                 i += 3
 
