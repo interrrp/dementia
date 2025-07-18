@@ -29,21 +29,6 @@ Bytecode = list[Instruction]
 
 
 def build_bytecode(code: str) -> Bytecode:
-    """
-    Build bytecode for a Brainfuck program.
-
-    This returns a list of tuples in the format of (op, amount),
-    meaning "do this operation this amount of times". Instructions may
-    be one of the following:
-
-        +      ("+", amount)  - will not be omitted in favor of a negative amount here
-        >      (">", amount)  < will not be omitted in favor of a negative amount here
-        ,      (",", 1)
-        .      (".", 1)
-        [-]    ("clear", 1)
-        [-<+>] ("transfer", distance from current cell to target cell)
-    """
-
     pass_1 = parse_basic_instructions(code)
     return optimize_patterns(pass_1)
 
