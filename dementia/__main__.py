@@ -1,7 +1,30 @@
+from dataclasses import dataclass
 from pathlib import Path
 from sys import argv, stderr
 
-Instruction = tuple[str, int]
+
+# fmt: off
+@dataclass(frozen=True)
+class IncCell:
+    amount: int
+
+@dataclass(frozen=True)
+class IncPtr:
+    amount: int
+
+@dataclass(frozen=True)
+class Transfer:
+    distance: int
+
+class StartLoop: ...
+class EndLoop: ...
+class Input: ...
+class Output: ...
+class Clear: ...
+# fmt: on
+
+
+Instruction = IncCell | IncPtr | StartLoop | EndLoop | Transfer | Input | Output | Clear
 Bytecode = list[Instruction]
 
 
@@ -53,14 +76,20 @@ def parse_basic_instructions(code: str) -> Bytecode:
 
         if cmd in "+-":
             code_ptr, amount = sum_repeatable_commands(code, code_ptr, "+", "-")
-            bytecode.append(("+", amount))
+            bytecode.append(IncCell(amount))
 
         elif cmd in "><":
             code_ptr, amount = sum_repeatable_commands(code, code_ptr, ">", "<")
-            bytecode.append((">", amount))
+            bytecode.append(IncPtr(amount))
 
-        elif cmd in "[],.":
-            bytecode.append((cmd, 1))
+        elif cmd == "[":
+            bytecode.append(StartLoop())
+        elif cmd == "]":
+            bytecode.append(EndLoop())
+        elif cmd == ",":
+            bytecode.append(Input())
+        elif cmd == ".":
+            bytecode.append(Output())
 
         code_ptr += 1
 
@@ -72,22 +101,23 @@ def optimize_patterns(bytecode: Bytecode) -> Bytecode:
 
     i = 0
     while i < len(bytecode):
-        match bytecode[i : i + 6]:
+        match bytecode[i:]:
             # [-] [+] Clear
-            case [("[", _), ("+", _), ("]", _), *_]:
-                new_bytecode.append(("clear", 1))
+            case [StartLoop(), IncCell(_), EndLoop(), *_]:
+                new_bytecode.append(Clear())
                 i += 3
 
             # [-<+>] Transfer to the left
             case [
-                ("[", _),
-                ("+", -1),
-                (">", left),
-                ("+", 1),
-                (">", right),
-                ("]", _),
+                StartLoop(),
+                IncCell(-1),
+                IncPtr(left),
+                IncCell(1),
+                IncPtr(right),
+                EndLoop(),
+                *_,
             ] if left == -right:
-                new_bytecode.append(("transfer", left))
+                new_bytecode.append(Transfer(left))
                 i += 6
 
             case _:
@@ -108,29 +138,30 @@ def build_python_code(bytecode: Bytecode) -> str:  # noqa: C901
     def emit(line: str) -> None:
         lines.append(f"{'    ' * indent}{line}")
 
-    for op, amount in bytecode:
-        if op == "+":
-            emit(f"tape[ptr] = (tape[ptr] + {amount}) % 256")
-        elif op == ">":
-            emit(f"ptr += {amount}")
+    for op in bytecode:
+        match op:
+            case IncCell(amount):
+                emit(f"tape[ptr] = (tape[ptr] + {amount}) % 256")
+            case IncPtr(amount):
+                emit(f"ptr += {amount}")
 
-        elif op == "[":
-            emit("while tape[ptr] != 0:")
-            indent += 1
-        elif op == "]":
-            indent -= 1
+            case StartLoop():
+                emit("while tape[ptr] != 0:")
+                indent += 1
+            case EndLoop():
+                indent -= 1
 
-        elif op == ",":
-            emit("tape[ptr] = ord(input()[:1] or '\\0')")
-        elif op == ".":
-            emit("print(chr(tape[ptr]), end='')")
+            case Input():
+                emit("tape[ptr] = ord(input()[:1] or '\\0')")
+            case Output():
+                emit("print(chr(tape[ptr]), end='')")
 
-        elif op == "clear":
-            emit("tape[ptr] = 0")
+            case Clear():
+                emit("tape[ptr] = 0")
 
-        elif op == "transfer":
-            emit(f"tape[ptr + {amount}] += tape[ptr]")
-            emit("tape[ptr] = 0")
+            case Transfer(distance):
+                emit(f"tape[ptr + {distance}] += tape[ptr]")
+                emit("tape[ptr] = 0")
 
     return "\n".join(lines)
 
