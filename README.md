@@ -4,15 +4,13 @@ A blazingly fast Brainfuck interpreter written in Python.
 
 ## Usage
 
-1. Install [Python](https://python.org/) if you haven't already.
+1. Install [Python](https://python.org/).
 2. Clone the repository.
 3. `python -m dementia <path to program>`
 
 Example programs are provided in the [programs](programs) directory.
 
 ## Optimizations
-
-"How is it so fast?" you may ask. Well, optimizations, of course. How else?
 
 ### 1. Process Brainfuck into IR
 
@@ -45,7 +43,7 @@ Execute the generated Python code using `exec`.
 
 ### 4. Use PyPy (optional, 27x speed boost)
 
-The performance difference between running this on CPython compared to PyPy is quite huge. On [mandelbrot.b](programs/mandelbrot.b), PyPy offered a 27x speed boost (1m27s vs 3s!).
+The performance difference between CPython and PyPy is huge. On [mandelbrot.b](programs/mandelbrot.b), PyPy offered a 27x speed boost (1m27s vs 3s).
 
 ## License
 
