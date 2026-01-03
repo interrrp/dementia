@@ -6,45 +6,26 @@ A blazingly fast Brainfuck interpreter written in Python.
 
 1. Install [Python](https://python.org/).
 2. Clone the repository.
-3. `python -m dementia <path to program>`
+3. `python dementia.py <path to Brainfuck program>`
 
 Example programs are provided in the [programs](programs) directory.
 
-## Optimizations
+## How it works
 
-### 1. Process Brainfuck into IR
+It goes through the Brainfuck code and builds Python code based on it. Certain
+patterns get optimized:
 
-Identifies common patterns:
+| Pattern    | Python           |
+| ---------- | ---------------- |
+| `+++++--`  | `tape[ptr] += 3` |
+| `>>>>><<`  | `ptr += 3`       |
+| `[-]`      | `tape[ptr] = 0`  |
+| `[-<<+>>]` | `transfer(-2)`   |
 
-| Pattern    | IR            |
-| ---------- | ------------- |
-| `+++++--`  | `+ 3`         |
-| `>>>>><<`  | `> 3`         |
-| `[-]`      | `clear`       |
-| `[-<<+>>]` | `transfer -2` |
+## PyPy
 
-### 2. Build Python code
-
-Transforms the IR into Python code.
-
-```py
-# +++ (+ 3) gets transformed into this:
-tape[ptr] += 3
-
-# Similarly, >>> (> 3) gets transformed into this:
-ptr += 3
-
-# etc...
-```
-
-### 3. Execute Python code
-
-Execute the generated Python code using `exec`.
-
-### 4. Use PyPy (optional, 27x speed boost)
-
-The performance difference between CPython and PyPy is huge. On [mandelbrot.b](programs/mandelbrot.b), PyPy offered a 27x speed boost (1m27s vs 3s).
+Since Brainfuck programs are naturally dominated by tight loops, PyPy's JIT offers a 27x speed boost on [`programs/mandelbrot.b`](programs/mandelbrot.b) compared to CPython on my machine (3s vs 1m27s).
 
 ## License
 
-This project is licensed under the [MIT](LICENSE) license.
+This project is licensed under the [MIT license](LICENSE).
