@@ -39,7 +39,7 @@ class Brainfuck:
 
             # Likewise, moving right 3 times and moving left 6 is
             # equivalent to moving left 3
-            >>><<<<<< == ---
+            >>><<<<<< == <<<
 
         This function is called when +/-/>/< is encountered, returning the delta count.
         For example, `count_delta("+", "-")` on `+++--` returns 1.
@@ -92,13 +92,6 @@ class Brainfuck:
         direction = -1 if left[0] == "<" else 1
         distance = len(left) * direction
         return distance
-
-    def expect(self, instruction: str) -> bool:
-        if self.code[self.ptr] != instruction:
-            return False
-        else:
-            self.ptr += 1
-            return True
 
 
 def run(path: str):
